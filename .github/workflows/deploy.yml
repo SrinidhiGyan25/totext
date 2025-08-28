@@ -1,63 +1,19 @@
-name: Deploy FastAPI to Droplet
-
+name: SSH Canary
 on:
+  workflow_dispatch: {}
   push:
-    branches: [ "master" ]
+    branches: ["main"]
 
 jobs:
-  deploy:
+  canary:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      # (Optional) quick sanity check that required files exist
-      - name: Verify structure
+      - name: "Write SSH key"
         run: |
-          test -f requirements.txt
-          test -f app/main.py
+          echo "${{ secrets.DEPLOYER_SSH_KEY }}" > key.pem
+          chmod 600 key.pem
 
-      # Sync code to the server (fast & safe)
-      - name: Rsync code to droplet
-        uses: burnett01/rsync-deployments@5.2
-        with:
-          switches: -avzr --delete --exclude='.git' --exclude='.github'
-          path: ./
-          remote_path: /var/www/fastapi-app-totext
-          remote_host: ${{ secrets.DROPLET_IP }}
-          remote_user: deployer
-          remote_key: ${{ secrets.DEPLOYER_SSH_KEY }}
-
-      # Install deps, create venv if missing, and restart service
-      - name: "SSH: install & restart"
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DROPLET_IP }}
-          username: deployer
-          key: ${{ secrets.DEPLOYER_SSH_KEY }}
-          script: |
-            set -euo pipefail
-
-            # Choose a Python version installed on the droplet
-            PY_BIN="$(command -v python3.11 || command -v python3.10 || command -v python3)"
-            echo "Using Python at: $PY_BIN"
-
-            # Create venv if needed
-            if [ ! -d "/home/deployer/venvs/fastapi-app-totext" ]; then
-              "$PY_BIN" -m venv /home/deployer/venvs/fastapi-app-totext
-            fi
-
-            # Upgrade pip and install requirements
-            /home/deployer/venvs/fastapi-app-totext/bin/pip install --upgrade pip wheel
-            /home/deployer/venvs/fastapi-app-totext/bin/pip install -r /var/www/fastapi-app-totext/requirements.txt
-
-            # If you have DB migrations, run them here (example)
-            # /home/deployer/venvs/fastapi-app-totext/bin/alembic upgrade head
-
-            # Reload systemd and restart
-            sudo systemctl daemon-reload
-            sudo systemctl restart fastapi-app-totext
-
-            # Optional: check status (won’t fail the job)
-            sudo systemctl status fastapi-app-totext --no-pager || true
+      - name: "SSH test"
+        run: |
+          ssh -i key.pem -o StrictHostKeyChecking=accept-new \
+            deployer@${{ secrets.DROPLET_IP }} "whoami && hostname"
