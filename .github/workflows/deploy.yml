@@ -24,7 +24,7 @@ jobs:
         with:
           switches: -avzr --delete --exclude='.git' --exclude='.github'
           path: ./
-          remote_path: /var/www/myapi
+          remote_path: /var/www/fastapi-app-totext
           remote_host: ${{ secrets.DROPLET_IP }}
           remote_user: deployer
           remote_key: ${{ secrets.DEPLOYER_SSH_KEY }}
@@ -44,20 +44,20 @@ jobs:
             echo "Using Python at: $PY_BIN"
 
             # Create venv if needed
-            if [ ! -d "/home/deployer/venvs/myapi" ]; then
-              "$PY_BIN" -m venv /home/deployer/venvs/myapi
+            if [ ! -d "/home/deployer/venvs/fastapi-app-totext" ]; then
+              "$PY_BIN" -m venv /home/deployer/venvs/fastapi-app-totext
             fi
 
             # Upgrade pip and install requirements
-            /home/deployer/venvs/myapi/bin/pip install --upgrade pip wheel
-            /home/deployer/venvs/myapi/bin/pip install -r /var/www/myapi/requirements.txt
+            /home/deployer/venvs/fastapi-app-totext/bin/pip install --upgrade pip wheel
+            /home/deployer/venvs/fastapi-app-totext/bin/pip install -r /var/www/fastapi-app-totext/requirements.txt
 
             # If you have DB migrations, run them here (example)
-            # /home/deployer/venvs/myapi/bin/alembic upgrade head
+            # /home/deployer/venvs/fastapi-app-totext/bin/alembic upgrade head
 
             # Reload systemd and restart
             sudo systemctl daemon-reload
-            sudo systemctl restart myapi
+            sudo systemctl restart fastapi-app-totext
 
             # Optional: check status (won’t fail the job)
-            sudo systemctl status myapi --no-pager || true
+            sudo systemctl status fastapi-app-totext --no-pager || true
