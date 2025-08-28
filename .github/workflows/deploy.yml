@@ -30,7 +30,7 @@ jobs:
         run: |
           rsync -avzr --delete --exclude='.git' --exclude='.github' \
             -e "ssh -i key.pem -o StrictHostKeyChecking=accept-new" \
-            ./ deployer@${{ secrets.DROPLET_IP }}:/var/www/myapi
+            ./ deployer@${{ secrets.DROPLET_IP }}:/var/www/fastapi-app-totext
 
       - name: "Install deps & restart service"
         run: |
@@ -43,21 +43,21 @@ jobs:
             echo "Using: $PY_BIN"
 
             # Create venv if missing
-            if [ ! -d "/home/deployer/venvs/myapi" ]; then
-              "$PY_BIN" -m venv /home/deployer/venvs/myapi
+            if [ ! -d "/home/deployer/venvs/fastapi-app-totext" ]; then
+              "$PY_BIN" -m venv /home/deployer/venvs/fastapi-app-totext
             fi
 
             # Install/upgrade dependencies
-            /home/deployer/venvs/myapi/bin/pip install --upgrade pip wheel
-            /home/deployer/venvs/myapi/bin/pip install -r /var/www/myapi/requirements.txt
+            /home/deployer/venvs/fastapi-app-totext/bin/pip install --upgrade pip wheel
+            /home/deployer/venvs/fastapi-app-totext/bin/pip install -r /var/www/fastapi-app-totext/requirements.txt
 
             # (Optional) run DB migrations here
-            # /home/deployer/venvs/myapi/bin/alembic upgrade head || true
+            # /home/deployer/venvs/fastapi-app-totext/bin/alembic upgrade head || true
 
             # Reload service files + restart app
             sudo systemctl daemon-reload
-            sudo systemctl restart myapi
+            sudo systemctl restart fastapi-app-totext
 
             # Show brief status (won’t fail pipeline)
-            sudo systemctl status myapi --no-pager || true
+            sudo systemctl status fastapi-app-totext --no-pager || true
           SSH
