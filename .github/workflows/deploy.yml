@@ -30,7 +30,7 @@ jobs:
           remote_key: ${{ secrets.DEPLOYER_SSH_KEY }}
 
       # Install deps, create venv if missing, and restart service
-      - name: SSH: install & restart
+      - name: "SSH: install & restart"
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DROPLET_IP }}
