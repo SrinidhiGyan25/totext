@@ -8,12 +8,13 @@ jobs:
   canary:
     runs-on: ubuntu-latest
     steps:
-      - name: "Write SSH key"
+      - name: "Write SSH key from base64"
         run: |
-          echo "${{ secrets.DEPLOYER_SSH_KEY }}" > key.pem
-          chmod 600 key.pem
-
-      - name: "SSH test"
+           echo "${{ secrets.DEPLOYER_SSH_KEY }}" | base64 -d > key.pem
+           sed -i 's/\r$//' key.pem || true   # strip CRLF if any
+           chmod 600 key.pem
+       
+      - name: "SSH canary"
         run: |
-          ssh -i key.pem -o StrictHostKeyChecking=accept-new \
-            deployer@${{ secrets.DROPLET_IP }} "whoami && hostname"
+           ssh -i key.pem -o StrictHostKeyChecking=accept-new \
+             deployer@${{ secrets.DROPLET_IP }} "whoami && hostname"
