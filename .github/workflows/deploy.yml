@@ -1,20 +1,63 @@
-name: SSH Canary
+name: Deploy FastAPI to Droplet
+
 on:
-  workflow_dispatch: {}
   push:
-    branches: ["master"]
+    branches: ["main"]
+  workflow_dispatch: {}
 
 jobs:
-  canary:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
       - name: "Write SSH key from base64"
         run: |
-           echo "${{ secrets.DEPLOYER_SSH_KEY }}" | base64 -d > key.pem
-           sed -i 's/\r$//' key.pem || true   # strip CRLF if any
-           chmod 600 key.pem
-       
-      - name: "SSH canary"
+          echo "${{ secrets.DEPLOYER_SSH_KEY }}" | base64 -d > key.pem
+          sed -i 's/\r$//' key.pem || true
+          chmod 600 key.pem
+          # Quick sanity:
+          head -n1 key.pem; tail -n1 key.pem
+
+      - name: "Verify repo structure"
         run: |
-           ssh -i key.pem -o StrictHostKeyChecking=accept-new \
-             deployer@${{ secrets.DROPLET_IP }} "whoami && hostname"
+          test -f requirements.txt
+          test -f app/main.py
+
+      - name: "Sync code to server"
+        run: |
+          rsync -avzr --delete --exclude='.git' --exclude='.github' \
+            -e "ssh -i key.pem -o StrictHostKeyChecking=accept-new" \
+            ./ deployer@${{ secrets.DROPLET_IP }}:/var/www/myapi
+
+      - name: "Install deps & restart service"
+        run: |
+          ssh -i key.pem -o StrictHostKeyChecking=accept-new \
+            deployer@${{ secrets.DROPLET_IP }} <<'SSH'
+            set -euo pipefail
+
+            # Pick a Python available on server
+            PY_BIN="$(command -v python3.11 || command -v python3.10 || command -v python3)"
+            echo "Using: $PY_BIN"
+
+            # Create venv if missing
+            if [ ! -d "/home/deployer/venvs/myapi" ]; then
+              "$PY_BIN" -m venv /home/deployer/venvs/myapi
+            fi
+
+            # Install/upgrade dependencies
+            /home/deployer/venvs/myapi/bin/pip install --upgrade pip wheel
+            /home/deployer/venvs/myapi/bin/pip install -r /var/www/myapi/requirements.txt
+
+            # (Optional) run DB migrations here
+            # /home/deployer/venvs/myapi/bin/alembic upgrade head || true
+
+            # Reload service files + restart app
+            sudo systemctl daemon-reload
+            sudo systemctl restart myapi
+
+            # Show brief status (won’t fail pipeline)
+            sudo systemctl status myapi --no-pager || true
+          SSH
