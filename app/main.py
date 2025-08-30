@@ -366,5 +366,5 @@ async def transcribe(
                         filename=f"{base}.txt",
                         background=BackgroundTask(cleanup))
 
-from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# from fastapi.staticfiles import StaticFiles
+# app.mount("/static", StaticFiles(directory="static"), name="static")
